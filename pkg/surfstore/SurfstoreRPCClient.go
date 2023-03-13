@@ -4,11 +4,14 @@ import (
 	context "context"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	grpc "google.golang.org/grpc"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+)
+
+const (
+	findLeaderInterval = 500 * time.Millisecond
 )
 
 type RPCClient struct {
@@ -227,8 +230,22 @@ func (surfClient *RPCClient) GetBlockStoreAddrs(blockStoreAddrs *[]string) error
 	return conn.Close()
 }
 
-// find the leader id, return error if the majority of servers are crashed
+// find the leader id, retry if the majority of servers are crashed
 func (surfClient *RPCClient) findLeader() (int, error) {
+	leaderId := -1
+	err := error(nil)
+	for {
+		leaderId, err = surfClient._findLeader()
+		if leaderId >= 0 && err == nil {
+			break
+		}
+		time.Sleep(findLeaderInterval)
+	}
+	return leaderId, nil
+}
+
+// find the leader id, return error if the majority of servers are crashed
+func (surfClient *RPCClient) _findLeader() (int, error) {
 	leaderId := -1
 	crashed := 0
 
@@ -267,9 +284,8 @@ func (surfClient *RPCClient) findLeader() (int, error) {
 
 	if crashed > len(surfClient.MetaStoreAddrs)/2 {
 		log.Println("majority crashed")
-		// client exits 1 if the majority of servers are crashed
-		os.Exit(1)
-		// actually unreachable
+		// client exits 1 if the majority of servers are crashed (depreciated)
+		// os.Exit(1)
 		return -1, fmt.Errorf("majority crashed")
 	}
 

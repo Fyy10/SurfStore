@@ -3,6 +3,7 @@ package SurfTest
 import (
 	"os"
 	"testing"
+	"time"
 
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	//	"time"
@@ -120,7 +121,7 @@ func TestSyncTwoClientsSameFileLeaderFailure(t *testing.T) {
 	}
 }
 
-func TestMajorityCrashed3Nodes(t *testing.T) {
+func TestMajorityCrashed3NodesRecover(t *testing.T) {
 	cfgPath := "./config_files/3nodes.txt"
 	test := InitTest(cfgPath)
 	defer EndTest(test)
@@ -151,10 +152,19 @@ func TestMajorityCrashed3Nodes(t *testing.T) {
 	test.Clients[1].Crash(test.Context, &emptypb.Empty{})
 	test.Clients[2].Crash(test.Context, &emptypb.Empty{})
 
-	//client1 syncs (should fail)
+	// wait for some time and then recover
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		test.Clients[1].Restore(test.Context, &emptypb.Empty{})
+	}()
+
+	//client1 syncs (should block and then succeed)
 	err = SyncClient("localhost:8080", "test0", BLOCK_SIZE, cfgPath)
-	if err == nil {
-		t.Fatalf("expected sync fail with exit status 1 but sync succeeded")
+	// if err == nil {
+	// 	t.Fatalf("expected sync fail with exit status 1 but sync succeeded")
+	// }
+	if err != nil {
+		t.Fatalf("sync failed: %v", err)
 	}
 }
 
