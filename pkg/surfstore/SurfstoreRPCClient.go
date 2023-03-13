@@ -2,6 +2,9 @@ package surfstore
 
 import (
 	context "context"
+	"fmt"
+	"log"
+	"os"
 	"time"
 
 	grpc "google.golang.org/grpc"
@@ -105,8 +108,13 @@ func (surfClient *RPCClient) GetBlockHashes(blockStoreAddr string, blockHashes *
 
 func (surfClient *RPCClient) GetFileInfoMap(serverFileInfoMap *map[string]*FileMetaData) error {
 	// connect to the meta store
-	// TODO: use the leader addr
-	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[0], grpc.WithInsecure())
+	leaderId, err := surfClient.findLeader()
+	if err != nil {
+		log.Println("cannot find the leader:", err)
+		return err
+	}
+	// use the leader addr
+	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[leaderId], grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
@@ -131,8 +139,13 @@ func (surfClient *RPCClient) GetFileInfoMap(serverFileInfoMap *map[string]*FileM
 
 func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersion *int32) error {
 	// connect to the meta store
-	// TODO: use the leader addr
-	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[0], grpc.WithInsecure())
+	leaderId, err := surfClient.findLeader()
+	if err != nil {
+		log.Println("cannot find the leader:", err)
+		return err
+	}
+	// use the leader addr
+	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[leaderId], grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
@@ -155,8 +168,13 @@ func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersio
 
 func (surfClient *RPCClient) GetBlockStoreMap(blockHashesIn []string, blockStoreMap *map[string][]string) error {
 	// connect to the meta store
-	// TODO: use the leader addr
-	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[0], grpc.WithInsecure())
+	leaderId, err := surfClient.findLeader()
+	if err != nil {
+		log.Println("cannot find the leader:", err)
+		return err
+	}
+	// use the leader addr
+	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[leaderId], grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
@@ -182,8 +200,13 @@ func (surfClient *RPCClient) GetBlockStoreMap(blockHashesIn []string, blockStore
 
 func (surfClient *RPCClient) GetBlockStoreAddrs(blockStoreAddrs *[]string) error {
 	// connect to the meta store
-	// TODO: use the leader addr
-	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[0], grpc.WithInsecure())
+	leaderId, err := surfClient.findLeader()
+	if err != nil {
+		log.Println("cannot find the leader:", err)
+		return err
+	}
+	// use the leader addr
+	conn, err := grpc.Dial(surfClient.MetaStoreAddrs[leaderId], grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
@@ -202,6 +225,59 @@ func (surfClient *RPCClient) GetBlockStoreAddrs(blockStoreAddrs *[]string) error
 
 	// close the connection
 	return conn.Close()
+}
+
+// find the leader id, return error if the majority of servers are crashed
+func (surfClient *RPCClient) findLeader() (int, error) {
+	leaderId := -1
+	crashed := 0
+
+	for idx, addr := range surfClient.MetaStoreAddrs {
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			crashed++
+			conn.Close()
+			continue
+		}
+
+		c := NewRaftSurfstoreClient(conn)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		succ, err := c.SendHeartbeat(ctx, &emptypb.Empty{})
+		// crashed
+		if err != nil {
+			crashed++
+			conn.Close()
+			continue
+		}
+
+		// is leader
+		if succ.Flag {
+			leaderId = idx
+			conn.Close()
+			continue
+		}
+
+		conn.Close()
+	}
+
+	log.Println("leader id:", leaderId, "crashed:", crashed)
+
+	if crashed > len(surfClient.MetaStoreAddrs)/2 {
+		log.Println("majority crashed")
+		// client exits 1 if the majority of servers are crashed
+		os.Exit(1)
+		// actually unreachable
+		return -1, fmt.Errorf("majority crashed")
+	}
+
+	if leaderId < 0 {
+		return -1, fmt.Errorf("no leader found")
+	}
+
+	return leaderId, nil
 }
 
 // This line guarantees all method for RPCClient are implemented
