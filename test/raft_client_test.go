@@ -1,9 +1,10 @@
 package SurfTest
 
 import (
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	"os"
 	"testing"
+
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	//	"time"
 )
 
@@ -111,6 +112,97 @@ func TestSyncTwoClientsSameFileLeaderFailure(t *testing.T) {
 	}
 
 	c, e = SameFile(workingDir+"/test1/multi_file1.txt", SRC_PATH+"/multi_file1.txt")
+	if e != nil {
+		t.Fatalf("Could not read files in client base dirs.")
+	}
+	if !c {
+		t.Fatalf("wrong file2 contents at client2")
+	}
+}
+
+func TestMajorityCrashed3Nodes(t *testing.T) {
+	cfgPath := "./config_files/3nodes.txt"
+	test := InitTest(cfgPath)
+	defer EndTest(test)
+	test.Clients[0].SetLeader(test.Context, &emptypb.Empty{})
+	test.Clients[0].SendHeartbeat(test.Context, &emptypb.Empty{})
+
+	worker1 := InitDirectoryWorker("test0", SRC_PATH)
+	worker2 := InitDirectoryWorker("test1", SRC_PATH)
+	defer worker1.CleanUp()
+	defer worker2.CleanUp()
+
+	//clients add different files
+	file1 := "multi_file1.txt"
+	file2 := "multi_file1.txt"
+	err := worker1.AddFile(file1)
+	if err != nil {
+		t.FailNow()
+	}
+	err = worker2.AddFile(file2)
+	if err != nil {
+		t.FailNow()
+	}
+	err = worker2.UpdateFile(file2, "update text")
+	if err != nil {
+		t.FailNow()
+	}
+
+	test.Clients[1].Crash(test.Context, &emptypb.Empty{})
+	test.Clients[2].Crash(test.Context, &emptypb.Empty{})
+
+	//client1 syncs (should fail)
+	err = SyncClient("localhost:8080", "test0", BLOCK_SIZE, cfgPath)
+	if err == nil {
+		t.Fatalf("expected sync fail with exit status 1 but sync succeeded")
+	}
+}
+
+func TestMinorityCrashed5Nodes(t *testing.T) {
+	cfgPath := "./config_files/5nodes.txt"
+	test := InitTest(cfgPath)
+	defer EndTest(test)
+	test.Clients[0].SetLeader(test.Context, &emptypb.Empty{})
+	test.Clients[0].SendHeartbeat(test.Context, &emptypb.Empty{})
+
+	worker1 := InitDirectoryWorker("test0", SRC_PATH)
+	worker2 := InitDirectoryWorker("test1", SRC_PATH)
+	defer worker1.CleanUp()
+	defer worker2.CleanUp()
+
+	//clients add different files
+	file1 := "multi_file1.txt"
+	file2 := "multi_file1.txt"
+	err := worker1.AddFile(file1)
+	if err != nil {
+		t.FailNow()
+	}
+	err = worker2.AddFile(file2)
+	if err != nil {
+		t.FailNow()
+	}
+	err = worker2.UpdateFile(file2, "update text")
+	if err != nil {
+		t.FailNow()
+	}
+
+	test.Clients[1].Crash(test.Context, &emptypb.Empty{})
+	test.Clients[2].Crash(test.Context, &emptypb.Empty{})
+
+	//client1 syncs (should succeed)
+	err = SyncClient("localhost:8080", "test0", BLOCK_SIZE, cfgPath)
+	if err != nil {
+		t.Fatalf("sync failed: %v", err)
+	}
+
+	// client 2 syncs (should succeed)
+	err = SyncClient("localhost:8080", "test1", BLOCK_SIZE, cfgPath)
+	if err != nil {
+		t.Fatalf("sync failed: %v", err)
+	}
+
+	workingDir, _ := os.Getwd()
+	c, e := SameFile(workingDir+"/test1/multi_file1.txt", SRC_PATH+"/multi_file1.txt")
 	if e != nil {
 		t.Fatalf("Could not read files in client base dirs.")
 	}
