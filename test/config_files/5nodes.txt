@@ -1,0 +1,4 @@
+{
+    "RaftAddrs": ["localhost:9090", "localhost:9091", "localhost:9092", "localhost:9093", "localhost:9094"],
+    "BlockAddrs": ["localhost:8080", "localhost:8081", "localhost:8082", "localhost:8083", "localhost:8084"]
+}
