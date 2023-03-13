@@ -47,8 +47,10 @@ func (m *MetaStore) UpdateFile(ctx context.Context, fileMetaData *FileMetaData) 
 		BlockHashList: fileMetaData.BlockHashList,
 	}
 
-	log.Printf("update meta store, filename: %s, version: %d, hash0: %s\n",
-		fileMetaData.Filename, fileMetaData.Version, fileMetaData.BlockHashList[0])
+	if len(fileMetaData.BlockHashList) > 0 {
+		log.Printf("update meta store, filename: %s, version: %d, hash0: %s\n",
+			fileMetaData.Filename, fileMetaData.Version, fileMetaData.BlockHashList[0])
+	}
 
 	// fmt.Println("updated map:")
 	// PrintMetaMap(m.FileMetaMap)
