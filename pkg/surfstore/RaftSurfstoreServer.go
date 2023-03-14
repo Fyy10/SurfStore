@@ -120,6 +120,12 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 	// wait recovery
 	s.waitRecovery(ctx)
 
+	// should check leader again
+	time.Sleep(100 * time.Millisecond)
+	if err := s.CheckIsLeader(); err != nil {
+		return nil, err
+	}
+
 	// TODO: update file
 	// append entry to log
 	s.log = append(s.log, &UpdateOperation{
