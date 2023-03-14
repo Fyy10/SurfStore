@@ -97,10 +97,14 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 // block until majority recovered, only the leader calls this function
 func (s *RaftSurfstore) waitRecovery(ctx context.Context) {
 	for {
-		succ, err := s.SendHeartbeat(ctx, &emptypb.Empty{})
-		if err == nil && succ.Flag {
+		succCount := make(chan int, 1)
+		s.broadcastEmpty(succCount)
+		count := <-succCount
+
+		if count > len(s.peers)/2 {
 			return
 		}
+
 		time.Sleep(500 * time.Millisecond)
 	}
 }
@@ -166,7 +170,10 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 		s.term = input.Term
 	}
 
-	s.log = input.Entries
+	if input.Entries != nil {
+		log.Println(input.Entries)
+		s.log = input.Entries
+	}
 
 	if input.LeaderCommit > s.commitIndex {
 		s.commitIndex = input.LeaderCommit
@@ -207,25 +214,45 @@ func (s *RaftSurfstore) SetLeader(ctx context.Context, _ *emptypb.Empty) (*Succe
 	return &Success{Flag: true}, nil
 }
 
-// send AppendEntries to all the followers in parallel, reply the number of successes
+// broadcast with nil log
+func (s *RaftSurfstore) broadcastEmpty(succCount chan int) {
+	// prevLogIndex := int64(s.nextIndex[idx] - 1)
+	// prevLogTerm := s.log[prevLogIndex].Term
+	input := &AppendEntryInput{
+		Term: s.term,
+		// TODO: put the right values
+		// PrevLogIndex: prevLogIndex,
+		// PrevLogTerm:  prevLogTerm,
+		PrevLogIndex: -1,
+		PrevLogTerm:  -1,
+		Entries:      nil,
+		LeaderCommit: -1,
+	}
+	s._broadcast(input, succCount)
+}
+
 func (s *RaftSurfstore) broadcast(succCount chan int) {
+	// prevLogIndex := int64(s.nextIndex[idx] - 1)
+	// prevLogTerm := s.log[prevLogIndex].Term
+	input := &AppendEntryInput{
+		Term: s.term,
+		// TODO: put the right values
+		// PrevLogIndex: prevLogIndex,
+		// PrevLogTerm:  prevLogTerm,
+		PrevLogIndex: -1,
+		PrevLogTerm:  -1,
+		Entries:      s.log,
+		LeaderCommit: s.commitIndex,
+	}
+	s._broadcast(input, succCount)
+}
+
+// send AppendEntries to all the followers in parallel, reply the number of successes
+func (s *RaftSurfstore) _broadcast(input *AppendEntryInput, succCount chan int) {
 	replies := make(chan bool, len(s.peers)-1)
 	for idx, addr := range s.peers {
 		if int64(idx) == s.id {
 			continue
-		}
-
-		// prevLogIndex := int64(s.nextIndex[idx] - 1)
-		// prevLogTerm := s.log[prevLogIndex].Term
-		input := &AppendEntryInput{
-			Term: s.term,
-			// TODO: put the right values
-			// PrevLogIndex: prevLogIndex,
-			// PrevLogTerm:  prevLogTerm,
-			PrevLogIndex: -1,
-			PrevLogTerm:  -1,
-			Entries:      s.log,
-			LeaderCommit: s.commitIndex,
 		}
 
 		go s.send(addr, input, replies)
