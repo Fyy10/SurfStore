@@ -3,6 +3,7 @@ package SurfTest
 import (
 	"cse224/proj5/pkg/surfstore"
 	"testing"
+	"time"
 
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
@@ -105,6 +106,93 @@ func TestRaftFollowersGetUpdates(t *testing.T) {
 	}
 
 	// update a file on node 0
+	fileMeta := &surfstore.FileMetaData{
+		Filename:      "test",
+		Version:       1,
+		BlockHashList: nil,
+	}
+	_, err = test.Clients[leaderIdx].UpdateFile(test.Context, fileMeta)
+	if err != nil {
+		t.Error("cannot update file:", err)
+	}
+	// replicate log
+	_, err = test.Clients[leaderIdx].SendHeartbeat(test.Context, &emptypb.Empty{})
+	if err != nil {
+		t.Error("cannot replicate log:", err)
+	}
+	// commit entries
+	_, err = test.Clients[leaderIdx].SendHeartbeat(test.Context, &emptypb.Empty{})
+	if err != nil {
+		t.Error("cannot commit entries:", err)
+	}
+
+	// check that all the nodes are in the right state
+	// leader and all followers have the log entry
+	// all in term 1
+	// entries applied to state machine (meta store)
+	expectedInfoMap := make(map[string]*surfstore.FileMetaData)
+	expectedInfoMap[fileMeta.Filename] = fileMeta
+
+	expectedLog := make([]*surfstore.UpdateOperation, 0)
+	expectedLog = append(expectedLog, &surfstore.UpdateOperation{
+		Term:         1,
+		FileMetaData: fileMeta,
+	})
+
+	for i := 0; i < len(test.Clients); i++ {
+		isLeader := false
+		if i == leaderIdx {
+			isLeader = true
+		}
+		term := int64(1)
+		_, err = CheckInternalState(&isLeader, &term, expectedLog, expectedInfoMap, test.Clients[i], test.Context)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+func TestBlockRecovery(t *testing.T) {
+	// setup
+	cfgPath := "./config_files/3nodes.txt"
+	test := InitTest(cfgPath)
+	defer EndTest(test)
+
+	// set node 0 to be the leader
+	leaderIdx := 0
+	_, err := test.Clients[leaderIdx].SetLeader(test.Context, &emptypb.Empty{})
+	if err != nil {
+		t.Error("cannot set leader:", err)
+	}
+	_, err = test.Clients[leaderIdx].SendHeartbeat(test.Context, &emptypb.Empty{})
+	if err != nil {
+		t.Error("cannot send heartbeat:", err)
+	}
+
+	for i := 0; i < len(test.Clients); i++ {
+		isLeader := false
+		if i == leaderIdx {
+			isLeader = true
+		}
+		term := int64(1)
+		_, err = CheckInternalState(&isLeader, &term, nil, nil, test.Clients[i], test.Context)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	// majority crash
+	test.Clients[1].Crash(test.Context, &emptypb.Empty{})
+	test.Clients[2].Crash(test.Context, &emptypb.Empty{})
+
+	// wait for some time and then recover
+	go func() {
+		time.Sleep(time.Second)
+		test.Clients[1].Restore(test.Context, &emptypb.Empty{})
+		test.Clients[2].Restore(test.Context, &emptypb.Empty{})
+	}()
+
+	// update a file on node 0 (should block and then succeed)
 	fileMeta := &surfstore.FileMetaData{
 		Filename:      "test",
 		Version:       1,
