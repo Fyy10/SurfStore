@@ -94,6 +94,17 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 	return blockStoreAddrs, err
 }
 
+// block until majority recovered, only the leader calls this function
+func (s *RaftSurfstore) waitRecovery(ctx context.Context) {
+	for {
+		succ, err := s.SendHeartbeat(ctx, &emptypb.Empty{})
+		if err == nil && succ.Flag {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
 func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) (*Version, error) {
 	if err := s.CheckIsCrashed(); err != nil {
 		return nil, err
@@ -101,6 +112,9 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 	if err := s.CheckIsLeader(); err != nil {
 		return nil, err
 	}
+
+	// wait recovery
+	s.waitRecovery(ctx)
 
 	// TODO: update file
 	// append entry to log
@@ -268,7 +282,13 @@ func (s *RaftSurfstore) SendHeartbeat(ctx context.Context, _ *emptypb.Empty) (*S
 
 	succCount := make(chan int, 1)
 	s.broadcast(succCount)
-	return &Success{Flag: true}, nil
+	count := <-succCount
+
+	if count > len(s.peers)/2 {
+		return &Success{Flag: true}, nil
+	} else {
+		return &Success{Flag: false}, nil
+	}
 }
 
 // ========== DO NOT MODIFY BELOW THIS LINE =====================================
