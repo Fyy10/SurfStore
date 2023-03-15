@@ -95,14 +95,18 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 }
 
 // block until majority recovered, only the leader calls this function
-func (s *RaftSurfstore) waitRecovery(ctx context.Context) {
+func (s *RaftSurfstore) waitRecovery() {
 	for {
+		if err := s.CheckIsCrashed(); err != nil {
+			return
+		}
 		if err := s.CheckIsLeader(); err != nil {
 			return
 		}
 
 		succCount := make(chan int, 1)
-		s.broadcastEmpty(succCount)
+		// s.broadcastEmpty(succCount)
+		s.broadcast(succCount)
 		count := <-succCount
 
 		if count > len(s.peers)/2 {
@@ -123,16 +127,19 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 
 	// TODO: update file
 	// append entry to log
+	log.Println("append:", filemeta)
 	s.log = append(s.log, &UpdateOperation{
 		Term:         s.term,
 		FileMetaData: filemeta,
 	})
 
 	// wait recovery
-	s.waitRecovery(ctx)
+	s.waitRecovery()
 
-	// should check leader again
-	time.Sleep(100 * time.Millisecond)
+	// should check again
+	if err := s.CheckIsCrashed(); err != nil {
+		return nil, err
+	}
 	if err := s.CheckIsLeader(); err != nil {
 		return nil, err
 	}
@@ -164,6 +171,7 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 // 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index
 // of last new entry)
 func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInput) (*AppendEntryOutput, error) {
+	// fmt.Println(input)
 	if err := s.CheckIsCrashed(); err != nil {
 		return nil, err
 	}
@@ -299,7 +307,7 @@ func (s *RaftSurfstore) send(addr string, input *AppendEntryInput, response chan
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	if _, err = c.AppendEntries(ctx, input); err != nil {
-		log.Printf("append entries failed on %s: %v\n", addr, err)
+		// log.Printf("append entries failed on %s: %v\n", addr, err)
 		response <- false
 		return
 	}
