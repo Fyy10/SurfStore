@@ -97,6 +97,10 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 // block until majority recovered, only the leader calls this function
 func (s *RaftSurfstore) waitRecovery(ctx context.Context) {
 	for {
+		if err := s.CheckIsLeader(); err != nil {
+			return
+		}
+
 		succCount := make(chan int, 1)
 		s.broadcastEmpty(succCount)
 		count := <-succCount
@@ -105,7 +109,7 @@ func (s *RaftSurfstore) waitRecovery(ctx context.Context) {
 			return
 		}
 
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 	}
 }
 
@@ -117,6 +121,13 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 		return nil, err
 	}
 
+	// TODO: update file
+	// append entry to log
+	s.log = append(s.log, &UpdateOperation{
+		Term:         s.term,
+		FileMetaData: filemeta,
+	})
+
 	// wait recovery
 	s.waitRecovery(ctx)
 
@@ -125,13 +136,6 @@ func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) 
 	if err := s.CheckIsLeader(); err != nil {
 		return nil, err
 	}
-
-	// TODO: update file
-	// append entry to log
-	s.log = append(s.log, &UpdateOperation{
-		Term:         s.term,
-		FileMetaData: filemeta,
-	})
 
 	// send entry to all followers in parallel
 	succCount := make(chan int)
