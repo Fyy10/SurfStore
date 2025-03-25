@@ -3,9 +3,9 @@ package SurfTest
 import (
 	"bufio"
 	"bytes"
-	"cse224/proj5/pkg/surfstore"
 	"database/sql"
 	"fmt"
+	"github.com/Fyy10/SurfStore/pkg/surfstore"
 	"io"
 	"io/ioutil"
 	"log"

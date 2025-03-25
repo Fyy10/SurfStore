@@ -1,9 +1,9 @@
 package main
 
 import (
-	"cse224/proj5/pkg/surfstore"
 	"flag"
 	"fmt"
+	"github.com/Fyy10/SurfStore/pkg/surfstore"
 	"io/ioutil"
 	"log"
 	"net"

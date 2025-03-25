@@ -1,4 +1,4 @@
-module cse224/proj5
+module github.com/Fyy10/SurfStore
 
 go 1.17
 

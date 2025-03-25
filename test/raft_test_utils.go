@@ -1,9 +1,9 @@
 package SurfTest
 
 import (
-	context "context"
-	"cse224/proj5/pkg/surfstore"
+	"context"
 	"fmt"
+	"github.com/Fyy10/SurfStore/pkg/surfstore"
 	"log"
 	"os"
 	"os/exec"

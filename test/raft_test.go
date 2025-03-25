@@ -1,7 +1,7 @@
 package SurfTest
 
 import (
-	"cse224/proj5/pkg/surfstore"
+	"github.com/Fyy10/SurfStore/pkg/surfstore"
 	"log"
 	"testing"
 	"time"
