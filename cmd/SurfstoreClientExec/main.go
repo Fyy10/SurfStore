@@ -11,48 +11,51 @@ import (
 )
 
 // Arguments
-const ARG_COUNT int = 2
+const ArgCount int = 2
 
 // Usage strings
-const USAGE_STRING = "./run-client.sh -d -f config_file.txt baseDir blockSize"
+const (
+	UsageString = "./run-client.sh -d -f config_file.txt baseDir blockSize"
+	DebugName   = "d"
+	DebugUsage  = "Output log statements"
 
-const DEBUG_NAME = "d"
-const DEBUG_USAGE = "Output log statements"
+	ConfigName  = "f config_file.txt"
+	ConfigUsage = "Path to config file that specifies addresses for all Raft nodes"
 
-const CONFIG_NAME = "f config_file.txt"
-const CONFIG_USAGE = "Path to config file that specifies addresses for all Raft nodes"
+	BasedirName  = "baseDir"
+	BasedirUsage = "Base directory of the client"
 
-const BASEDIR_NAME = "baseDir"
-const BASEDIR_USAGE = "Base directory of the client"
-
-const BLOCK_NAME = "blockSize"
-const BLOCK_USAGE = "Size of the blocks used to fragment files"
+	BlockName  = "blockSize"
+	BlockUsage = "Size of the blocks used to fragment files"
+)
 
 // Exit codes
-const EX_USAGE int = 64
+const (
+	ExUsage int = 64
+)
 
 func main() {
 	// Custom flag Usage message
 	flag.Usage = func() {
 		w := flag.CommandLine.Output()
-		fmt.Fprintf(w, "Usage of %s:\n", USAGE_STRING)
-		fmt.Fprintf(w, "  -%s: %v\n", DEBUG_NAME, DEBUG_USAGE)
-		fmt.Fprintf(w, "  -%s: %v\n", CONFIG_NAME, CONFIG_USAGE)
-		fmt.Fprintf(w, "  %s: %v\n", BASEDIR_NAME, BASEDIR_USAGE)
-		fmt.Fprintf(w, "  %s: %v\n", BLOCK_NAME, BLOCK_USAGE)
+		fmt.Fprintf(w, "Usage of %s:\n", UsageString)
+		fmt.Fprintf(w, "  -%s: %v\n", DebugName, DebugUsage)
+		fmt.Fprintf(w, "  -%s: %v\n", ConfigName, ConfigUsage)
+		fmt.Fprintf(w, "  %s: %v\n", BasedirName, BasedirUsage)
+		fmt.Fprintf(w, "  %s: %v\n", BlockName, BlockUsage)
 	}
 
 	// Parse command-line arguments and flags
-	debug := flag.Bool("d", false, DEBUG_USAGE)
+	debug := flag.Bool("d", false, DebugUsage)
 	configFile := flag.String("f", "", "(required) Config file")
 	flag.Parse()
 
 	// Use tail arguments to hold non-flag arguments
 	args := flag.Args()
 
-	if len(args) != ARG_COUNT {
+	if len(args) != ArgCount {
 		flag.Usage()
-		os.Exit(EX_USAGE)
+		os.Exit(ExUsage)
 	}
 	addrs := surfstore.LoadRaftConfigFile(*configFile)
 
@@ -60,7 +63,7 @@ func main() {
 	blockSize, err := strconv.Atoi(args[1])
 	if err != nil {
 		flag.Usage()
-		os.Exit(EX_USAGE)
+		os.Exit(ExUsage)
 	}
 
 	log.Println("Client syncing with ", addrs, baseDir, blockSize)
