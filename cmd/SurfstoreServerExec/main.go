@@ -15,19 +15,19 @@ import (
 )
 
 // Usage String
-const USAGE_STRING = "./run-server.sh -s <service_type> -p <port> -l -d (blockStoreAddr*)"
+const UsageString = "./run-server.sh -s <service_type> -p <port> -l -d (blockStoreAddr*)"
 
 // Set of valid services
-var SERVICE_TYPES = map[string]bool{"meta": true, "block": true, "both": true}
+var ServiceTypes = map[string]bool{"meta": true, "block": true, "both": true}
 
 // Exit codes
-const EX_USAGE int = 64
+const ExUsage int = 64
 
 func main() {
 	// Custom flag Usage message
 	flag.Usage = func() {
 		w := flag.CommandLine.Output()
-		fmt.Fprintf(w, "Usage of %s:\n", USAGE_STRING)
+		fmt.Fprintf(w, "Usage of %s:\n", UsageString)
 		flag.VisitAll(func(f *flag.Flag) {
 			fmt.Fprintf(w, "  -%s: %v\n", f.Name, f.Usage)
 		})
@@ -49,9 +49,9 @@ func main() {
 	}
 
 	// Valid service type argument
-	if _, ok := SERVICE_TYPES[strings.ToLower(*service)]; !ok {
+	if _, ok := ServiceTypes[strings.ToLower(*service)]; !ok {
 		flag.Usage()
-		os.Exit(EX_USAGE)
+		os.Exit(ExUsage)
 	}
 
 	// Add localhost if necessary

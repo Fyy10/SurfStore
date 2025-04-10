@@ -16,8 +16,9 @@ const ArgCount int = 2
 // Usage strings
 const (
 	UsageString = "./run-client.sh -d -f config_file.txt baseDir blockSize"
-	DebugName   = "d"
-	DebugUsage  = "Output log statements"
+
+	DebugName  = "d"
+	DebugUsage = "Output log statements"
 
 	ConfigName  = "f config_file.txt"
 	ConfigUsage = "Path to config file that specifies addresses for all Raft nodes"
