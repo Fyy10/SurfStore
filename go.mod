@@ -3,7 +3,7 @@ module github.com/Fyy10/SurfStore
 go 1.24
 
 require (
-	github.com/mattn/go-sqlite3 v1.14.27
+	github.com/mattn/go-sqlite3 v1.14.34
 	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.6
 )
