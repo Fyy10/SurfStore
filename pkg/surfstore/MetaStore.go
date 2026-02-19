@@ -15,10 +15,14 @@ type MetaStore struct {
 	UnimplementedMetaStoreServer
 }
 
+// GetFileInfoMap returns the mapping of filename to file meta data
 func (m *MetaStore) GetFileInfoMap(ctx context.Context, _ *emptypb.Empty) (*FileInfoMap, error) {
 	return &FileInfoMap{FileInfoMap: m.FileMetaMap}, nil
 }
 
+// UpdateFile updates the metadata for a file in the meta store.
+// It validates the version number to ensure it is exactly the next version.
+// Returns the new version if successful, or an error if there is a version mismatch.
 func (m *MetaStore) UpdateFile(ctx context.Context, fileMetaData *FileMetaData) (*Version, error) {
 	oldMetaData, ok := m.FileMetaMap[fileMetaData.Filename]
 	if !ok {
@@ -79,6 +83,7 @@ func (m *MetaStore) GetBlockStoreMap(ctx context.Context, blockHashesIn *BlockHa
 	return blockStoreMap, nil
 }
 
+// GetBlockStoreAddrs returns the list of block store addresses.
 func (m *MetaStore) GetBlockStoreAddrs(ctx context.Context, _ *emptypb.Empty) (*BlockStoreAddrs, error) {
 	return &BlockStoreAddrs{BlockStoreAddrs: m.BlockStoreAddrs}, nil
 }
@@ -86,6 +91,7 @@ func (m *MetaStore) GetBlockStoreAddrs(ctx context.Context, _ *emptypb.Empty) (*
 // This line guarantees all method for MetaStore are implemented
 var _ MetaStoreInterface = new(MetaStore)
 
+// NewMetaStore creates a new MetaStore with the given block store addresses.
 func NewMetaStore(blockStoreAddrs []string) *MetaStore {
 	return &MetaStore{
 		FileMetaMap:        map[string]*FileMetaData{},

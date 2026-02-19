@@ -61,6 +61,8 @@ func (s *RaftSurfstore) CheckIsLeader() error {
 	return nil
 }
 
+// GetFileInfoMap retrieves the file info map from the meta store.
+// It returns an error if the server is crashed or not the leader.
 func (s *RaftSurfstore) GetFileInfoMap(ctx context.Context, empty *emptypb.Empty) (*FileInfoMap, error) {
 	if err := s.CheckIsCrashed(); err != nil {
 		return nil, err
@@ -72,6 +74,8 @@ func (s *RaftSurfstore) GetFileInfoMap(ctx context.Context, empty *emptypb.Empty
 	return fileInfoMap, err
 }
 
+// GetBlockStoreMap retrieves the block store map from the meta store.
+// It returns an error if the server is crashed or not the leader.
 func (s *RaftSurfstore) GetBlockStoreMap(ctx context.Context, hashes *BlockHashes) (*BlockStoreMap, error) {
 	if err := s.CheckIsCrashed(); err != nil {
 		return nil, err
@@ -83,6 +87,8 @@ func (s *RaftSurfstore) GetBlockStoreMap(ctx context.Context, hashes *BlockHashe
 	return blockStoreMap, err
 }
 
+// GetBlockStoreAddrs retrieves the block store addresses from the meta store.
+// It returns an error if the server is crashed or not the leader.
 func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.Empty) (*BlockStoreAddrs, error) {
 	if err := s.CheckIsCrashed(); err != nil {
 		return nil, err
@@ -94,7 +100,8 @@ func (s *RaftSurfstore) GetBlockStoreAddrs(ctx context.Context, empty *emptypb.E
 	return blockStoreAddrs, err
 }
 
-// block until majority recovered, only the leader calls this function
+// waitRecovery blocks until the majority of servers have recovered.
+// Only the leader should call this function.
 func (s *RaftSurfstore) waitRecovery() {
 	for {
 		if err := s.CheckIsCrashed(); err != nil {
@@ -117,6 +124,9 @@ func (s *RaftSurfstore) waitRecovery() {
 	}
 }
 
+// UpdateFile updates the file metadata in the meta store.
+// It appends the entry to the log, replicates to followers, and applies to the state machine if successful.
+// It returns an error if the server is crashed or not the leader.
 func (s *RaftSurfstore) UpdateFile(ctx context.Context, filemeta *FileMetaData) (*Version, error) {
 	if err := s.CheckIsCrashed(); err != nil {
 		return nil, err
@@ -211,6 +221,8 @@ func (s *RaftSurfstore) AppendEntries(ctx context.Context, input *AppendEntryInp
 	return output, nil
 }
 
+// SetLeader sets the current server as the leader.
+// It returns an error if the server is crashed.
 func (s *RaftSurfstore) SetLeader(ctx context.Context, _ *emptypb.Empty) (*Success, error) {
 	if err := s.CheckIsCrashed(); err != nil {
 		return nil, err
@@ -232,7 +244,7 @@ func (s *RaftSurfstore) SetLeader(ctx context.Context, _ *emptypb.Empty) (*Succe
 	return &Success{Flag: true}, nil
 }
 
-// broadcast with nil log
+// broadcastEmpty sends an empty AppendEntries request (heartbeat) to all followers.
 func (s *RaftSurfstore) broadcastEmpty(succCount chan int) {
 	// prevLogIndex := int64(s.nextIndex[idx] - 1)
 	// prevLogTerm := s.log[prevLogIndex].Term
@@ -249,6 +261,7 @@ func (s *RaftSurfstore) broadcastEmpty(succCount chan int) {
 	s._broadcast(input, succCount)
 }
 
+// broadcast sends the current log entries to all followers via AppendEntries.
 func (s *RaftSurfstore) broadcast(succCount chan int) {
 	// prevLogIndex := int64(s.nextIndex[idx] - 1)
 	// prevLogTerm := s.log[prevLogIndex].Term
@@ -338,6 +351,7 @@ func (s *RaftSurfstore) SendHeartbeat(ctx context.Context, _ *emptypb.Empty) (*S
 
 // ========== DO NOT MODIFY BELOW THIS LINE =====================================
 
+// Crash crashes the server, making it stop responding to requests.
 func (s *RaftSurfstore) Crash(ctx context.Context, _ *emptypb.Empty) (*Success, error) {
 	s.isCrashedMutex.Lock()
 	s.isCrashed = true
@@ -346,6 +360,7 @@ func (s *RaftSurfstore) Crash(ctx context.Context, _ *emptypb.Empty) (*Success, 
 	return &Success{Flag: true}, nil
 }
 
+// Restore restores the server from the crashed state, allowing it to respond to requests again.
 func (s *RaftSurfstore) Restore(ctx context.Context, _ *emptypb.Empty) (*Success, error) {
 	s.isCrashedMutex.Lock()
 	s.isCrashed = false
@@ -354,6 +369,7 @@ func (s *RaftSurfstore) Restore(ctx context.Context, _ *emptypb.Empty) (*Success
 	return &Success{Flag: true}, nil
 }
 
+// GetInternalState returns the internal state of the Raft server, including leadership, term, log, and meta map.
 func (s *RaftSurfstore) GetInternalState(ctx context.Context, empty *emptypb.Empty) (*RaftInternalState, error) {
 	fileInfoMap, _ := s.metaStore.GetFileInfoMap(ctx, empty)
 	s.isLeaderMutex.RLock()

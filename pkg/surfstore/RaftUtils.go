@@ -17,6 +17,7 @@ type RaftConfig struct {
 	BlockAddrs []string
 }
 
+// LoadRaftConfigFile loads the Raft configuration from the specified JSON file.
 func LoadRaftConfigFile(filename string) (cfg RaftConfig) {
 	configFD, e := os.Open(filename)
 	if e != nil {
@@ -35,6 +36,7 @@ func LoadRaftConfigFile(filename string) (cfg RaftConfig) {
 	return
 }
 
+// NewRaftServer creates a new RaftSurfstore server with the given ID and configuration.
 func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 	// TODO Any initialization you need here
 
@@ -61,6 +63,7 @@ func NewRaftServer(id int64, config RaftConfig) (*RaftSurfstore, error) {
 	return &server, nil
 }
 
+// ServeRaftServer starts the Raft server and any services.
 // TODO: Start up the Raft server and any services here
 func ServeRaftServer(server *RaftSurfstore) error {
 	grpcServer := grpc.NewServer()

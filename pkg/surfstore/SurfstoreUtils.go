@@ -245,8 +245,8 @@ func ClientSync(client RPCClient) {
 	// PrintMetaMap(remoteMetaMap)
 }
 
-// return a slice of hash strings of file blocks of the given size;
-// if the file is empty, return []string{EMPTYFILE_HASHVALUE}
+// GetFileHashList returns a slice of hash strings for file blocks of the given size.
+// If the file is empty, it returns []string{EMPTYFILE_HASHVALUE}.
 func GetFileHashList(filePath string, blockSize int) ([]string, error) {
 	if blockSize <= 0 {
 		return nil, fmt.Errorf("invalid block size")
@@ -281,6 +281,7 @@ func GetFileHashList(filePath string, blockSize int) ([]string, error) {
 	return blockHashList, nil
 }
 
+// CompareHashList compares two hash lists and returns true if they are identical.
 func CompareHashList(hash1, hash2 []string) (same bool) {
 	if len(hash1) != len(hash2) {
 		return false
@@ -293,6 +294,7 @@ func CompareHashList(hash1, hash2 []string) (same bool) {
 	return true
 }
 
+// GetFileBlocks reads a file and returns a slice of byte slices, each representing a block of the specified size.
 func GetFileBlocks(filePath string, blockSize int) ([][]byte, error) {
 	if blockSize <= 0 {
 		return nil, fmt.Errorf("invalid block size")

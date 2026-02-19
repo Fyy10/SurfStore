@@ -13,18 +13,23 @@ import (
 )
 
 /* Hash Related */
+
+// GetBlockHashBytes computes the sha256 hash of blockData and returns []byte
 func GetBlockHashBytes(blockData []byte) []byte {
 	h := sha256.New()
 	h.Write(blockData)
 	return h.Sum(nil)
 }
 
+// GetBlockHashString computes the sha256 hash of blockData and returns string
 func GetBlockHashString(blockData []byte) string {
 	blockHash := GetBlockHashBytes(blockData)
 	return hex.EncodeToString(blockHash)
 }
 
 /* File Path Related */
+
+// ConcatPath concatenates a base directory and a file directory to form a full path.
 func ConcatPath(baseDir, fileDir string) string {
 	return baseDir + "/" + fileDir
 }
@@ -34,7 +39,7 @@ func ConcatPath(baseDir, fileDir string) string {
 */
 
 const createTable string = `create table if not exists indexes (
-		fileName TEXT, 
+		fileName TEXT,
 		version INT,
 		hashIndex INT,
 		hashValue TEXT
@@ -82,8 +87,9 @@ func WriteMetaFile(fileMetas map[string]*FileMetaData, baseDir string) error {
 }
 
 /*
-Reading Local Metadata File Related
+	Reading Local Metadata File Related
 */
+
 const getDistinctFileName string = `select distinct fileName from indexes;`
 
 const getTuplesByFileName string = `select * from indexes

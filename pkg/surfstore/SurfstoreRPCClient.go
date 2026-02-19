@@ -21,6 +21,7 @@ type RPCClient struct {
 	BlockSize      int
 }
 
+// GetBlock retrieves a block from the specified block store address.
 func (surfClient *RPCClient) GetBlock(blockHash string, blockStoreAddr string, block *Block) error {
 	// connect to the server
 	conn, err := grpc.Dial(blockStoreAddr, grpc.WithInsecure())
@@ -44,6 +45,7 @@ func (surfClient *RPCClient) GetBlock(blockHash string, blockStoreAddr string, b
 	return conn.Close()
 }
 
+// PutBlock stores a block at the specified block store address.
 func (surfClient *RPCClient) PutBlock(block *Block, blockStoreAddr string, succ *bool) error {
 	// connect to the block store
 	conn, err := grpc.Dial(blockStoreAddr, grpc.WithInsecure())
@@ -66,6 +68,7 @@ func (surfClient *RPCClient) PutBlock(block *Block, blockStoreAddr string, succ 
 	return conn.Close()
 }
 
+// HasBlocks checks which of the given block hashes exist in the block store.
 func (surfClient *RPCClient) HasBlocks(blockHashesIn []string, blockStoreAddr string, blockHashesOut *[]string) error {
 	// connect to the block store
 	conn, err := grpc.Dial(blockStoreAddr, grpc.WithInsecure())
@@ -88,6 +91,7 @@ func (surfClient *RPCClient) HasBlocks(blockHashesIn []string, blockStoreAddr st
 	return conn.Close()
 }
 
+// GetBlockHashes retrieves all block hashes stored in the block store.
 func (surfClient *RPCClient) GetBlockHashes(blockStoreAddr string, blockHashes *[]string) error {
 	// connect to the block store
 	conn, err := grpc.Dial(blockStoreAddr, grpc.WithInsecure())
@@ -110,6 +114,7 @@ func (surfClient *RPCClient) GetBlockHashes(blockStoreAddr string, blockHashes *
 	return conn.Close()
 }
 
+// GetFileInfoMap retrieves the file info map from the meta store via leader.
 func (surfClient *RPCClient) GetFileInfoMap(serverFileInfoMap *map[string]*FileMetaData) error {
 	// connect to the meta store
 	leaderId, err := surfClient.findLeader()
@@ -141,6 +146,7 @@ func (surfClient *RPCClient) GetFileInfoMap(serverFileInfoMap *map[string]*FileM
 	return conn.Close()
 }
 
+// UpdateFile updates the file metadata on the meta store via leader.
 func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersion *int32) error {
 	// connect to the meta store
 	leaderId, err := surfClient.findLeader()
@@ -170,6 +176,7 @@ func (surfClient *RPCClient) UpdateFile(fileMetaData *FileMetaData, latestVersio
 	return conn.Close()
 }
 
+// GetBlockStoreMap retrieves the mapping of block store addresses to block hashes.
 func (surfClient *RPCClient) GetBlockStoreMap(blockHashesIn []string, blockStoreMap *map[string][]string) error {
 	// connect to the meta store
 	leaderId, err := surfClient.findLeader()
@@ -202,6 +209,7 @@ func (surfClient *RPCClient) GetBlockStoreMap(blockHashesIn []string, blockStore
 	return conn.Close()
 }
 
+// GetBlockStoreAddrs retrieves the list of block store addresses.
 func (surfClient *RPCClient) GetBlockStoreAddrs(blockStoreAddrs *[]string) error {
 	// connect to the meta store
 	leaderId, err := surfClient.findLeader()
@@ -231,7 +239,8 @@ func (surfClient *RPCClient) GetBlockStoreAddrs(blockStoreAddrs *[]string) error
 	return conn.Close()
 }
 
-// find the leader id, retry if the majority of servers are crashed
+// findLeader finds the leader id by attempting to connect to the meta store servers.
+// It returns the leader index if found, or an error if the majority of servers are crashed.
 func (surfClient *RPCClient) findLeader() (int, error) {
 	// leaderId := -1
 	// err := error(nil)
@@ -248,7 +257,7 @@ func (surfClient *RPCClient) findLeader() (int, error) {
 	return surfClient._findLeader()
 }
 
-// find the leader id, return error if the majority of servers are crashed
+// _findLeader is an internal method that searches for the leader by sending heartbeats to all servers.
 func (surfClient *RPCClient) _findLeader() (int, error) {
 	leaderId := -1
 	crashed := 0
@@ -304,7 +313,7 @@ func (surfClient *RPCClient) _findLeader() (int, error) {
 // This line guarantees all method for RPCClient are implemented
 var _ ClientInterface = new(RPCClient)
 
-// Create an Surfstore RPC client
+// NewSurfstoreRPCClient creates a new Surfstore RPC client with the given parameters.
 func NewSurfstoreRPCClient(addrs []string, baseDir string, blockSize int) RPCClient {
 
 	return RPCClient{
